@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Domain.Clearning", "Domain.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Clearning", "UI.Clearning\UI.Clearning.csproj", "{FC7F7114-B6C7-48C2-9A1C-6DCA0AE0BC2F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Clearning.Services", "Clearning.Services\Clearning.Services.csproj", "{B29B2C72-FB25-485D-8DD4-91C61A80E3D8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{FC7F7114-B6C7-48C2-9A1C-6DCA0AE0BC2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC7F7114-B6C7-48C2-9A1C-6DCA0AE0BC2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FC7F7114-B6C7-48C2-9A1C-6DCA0AE0BC2F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B29B2C72-FB25-485D-8DD4-91C61A80E3D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B29B2C72-FB25-485D-8DD4-91C61A80E3D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B29B2C72-FB25-485D-8DD4-91C61A80E3D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B29B2C72-FB25-485D-8DD4-91C61A80E3D8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

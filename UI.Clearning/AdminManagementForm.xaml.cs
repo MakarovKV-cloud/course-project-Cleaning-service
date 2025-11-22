@@ -1,4 +1,5 @@
 ﻿using Cleaning.Data.JsonStorage;
+using Clearning.Services;
 using Domain.Cleaning;
 using System;
 using System.Collections.Generic;
@@ -14,6 +15,7 @@ namespace UI.Cleaning
         private readonly CitiesRepository _citiesRepository;
         private readonly ServicesRepository _servicesRepository;
         private readonly RequestServicesRepository _requestServicesRepository;
+        private readonly AdminManagementService _adminManagementService;
 
         private User _currentUser;
         private User _selectedUser;
@@ -70,6 +72,8 @@ namespace UI.Cleaning
                     GoToAuthorization();
                     return;
                 }
+
+                _adminManagementService = new AdminManagementService(_currentUser!, _usersRepository);
 
                 LoadUsers();
                 LoadRequests();
@@ -170,6 +174,7 @@ namespace UI.Cleaning
         private void ApplyRoleButton_Click(object sender, RoutedEventArgs e)
         {
             var currentSelectedUser = _selectedUser;
+            int selectedUserId = currentSelectedUser.Id;
 
             if (currentSelectedUser == null)
             {
@@ -178,51 +183,29 @@ namespace UI.Cleaning
                 return;
             }
 
-            if (RoleComboBox.SelectedItem == null)
+            if (RoleComboBox.SelectedItem is not null )
             {
                 MessageBox.Show("Роль не выбрана", "Ошибка",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            string newRole = RoleComboBox.SelectedItem.ToString();
-
             try
             {
-                if (currentSelectedUser.Role == newRole)
-                {
-                    MessageBox.Show("Роль пользователя уже установлена в выбранное значение", "Информация",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
-
-                if (currentSelectedUser.Role == "Admin" && newRole != "Admin")
-                {
-                    var adminUsers = _usersRepository.GetAll().Where(u => u.Role == "Admin").ToList();
-                    if (adminUsers.Count <= 1)
-                    {
-                        MessageBox.Show("Нельзя изменить роль последнего администратора", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
-                        return;
-                    }
-                }
-
-                if (currentSelectedUser.Id == _currentUser.Id)
-                {
-                    MessageBox.Show("Нельзя изменить свою собственную роль", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                int selectedUserId = currentSelectedUser.Id;
-                currentSelectedUser.Role = newRole;
-                _usersRepository.Update(currentSelectedUser);
+                string newRole = RoleComboBox.SelectedItem!.ToString()!;
+                _adminManagementService.ApplyRole(currentSelectedUser, newRole);
 
                 LoadUsers();
                 RestoreUserSelection(selectedUserId);
 
                 MessageBox.Show($"Роль пользователя {currentSelectedUser.Login} изменена на '{newRole}'",
                     "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (LogicException ex)
+            {
+                MessageBox.Show(ex.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                LoadUsers();
+                ClearUserSelection();
             }
             catch (Exception ex)
             {

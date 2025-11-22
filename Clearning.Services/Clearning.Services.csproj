@@ -1,17 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Clearning.Data.Interfaces\Clearning.Data.Interfaces.csproj" />
-    <ProjectReference Include="..\Clearning.Data.JsonStorage\Clearning.Data.JsonStorage.csproj" />
-    <ProjectReference Include="..\Clearning.Services\Clearning.Services.csproj" />
     <ProjectReference Include="..\Domain.Clearning\Domain.Clearning.csproj" />
   </ItemGroup>
 
