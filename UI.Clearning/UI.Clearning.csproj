@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Clearning.Data.Interfaces\Clearning.Data.Interfaces.csproj" />
     <ProjectReference Include="..\Clearning.Data.JsonStorage\Clearning.Data.JsonStorage.csproj" />
     <ProjectReference Include="..\Clearning.Services\Clearning.Services.csproj" />
