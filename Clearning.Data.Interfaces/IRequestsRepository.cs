@@ -7,7 +7,7 @@ namespace Cleaning.Data.Interfaces
     {
         int Add(Request request);
         bool Delete(int id);
-        List<Request> GetAll();
+        List<Request> GetAll(RequestFilter? filter = null);
         Request? GetById(int id);
         List<Request> GetByUserId(int userId);
         List<Request> GetByCleanerId(int cleanerId);

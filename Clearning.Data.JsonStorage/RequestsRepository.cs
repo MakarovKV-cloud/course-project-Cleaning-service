@@ -13,6 +13,34 @@ namespace Cleaning.Data.JsonStorage
         private readonly List<Request> _requests = ReadRequests();
         private static int _nextId = GetNextId();
 
+        public List<Request> GetAll(RequestFilter? filter = null)
+        {
+            var result = _requests.AsEnumerable();
+
+            if (filter == null)
+                return result.ToList();
+
+            if (filter.StartDate.HasValue)
+                result = result.Where(x => DateOnly.FromDateTime(x.CleaningDate) >= filter.StartDate.Value);
+
+            if (filter.EndDate.HasValue)
+                result = result.Where(x => DateOnly.FromDateTime(x.CleaningDate) <= filter.EndDate.Value);
+
+            if (filter.CleanerId.HasValue)
+                result = result.Where(x => x.CleanerId == filter.CleanerId.Value);
+
+            if (filter.ClientId.HasValue)
+                result = result.Where(x => x.UserId == filter.ClientId.Value);
+
+            if (!string.IsNullOrEmpty(filter.Status))
+                result = result.Where(x => x.Status == filter.Status);
+
+            if (filter.CityId.HasValue)
+                result = result.Where(x => x.CityId == filter.CityId.Value);
+
+            return result.ToList();
+        }
+
         public int Add(Request request)
         {
             request.Id = _nextId++;
@@ -31,11 +59,6 @@ namespace Cleaning.Data.JsonStorage
                 return true;
             }
             return false;
-        }
-
-        public List<Request> GetAll()
-        {
-            return _requests.ToList();
         }
 
         public Request? GetById(int id)

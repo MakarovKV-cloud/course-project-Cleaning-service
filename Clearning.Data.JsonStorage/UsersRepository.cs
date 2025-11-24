@@ -13,6 +13,25 @@ namespace Cleaning.Data.JsonStorage
         private readonly List<User> _users = ReadUsers();
         private static int _nextId = GetNextId();
 
+        public List<User> GetAll(UserFilter? filter = null)
+        {
+            var result = _users.AsEnumerable();
+
+            if (filter == null)
+                return result.ToList();
+
+            if (!string.IsNullOrEmpty(filter.Role))
+                result = result.Where(x => x.Role == filter.Role);
+
+            if (filter.CreatedFrom.HasValue)
+                result = result.Where(x => DateOnly.FromDateTime(x.CreatedAt) >= filter.CreatedFrom.Value);
+
+            if (filter.CreatedTo.HasValue)
+                result = result.Where(x => DateOnly.FromDateTime(x.CreatedAt) <= filter.CreatedTo.Value);
+
+            return result.ToList();
+        }
+
         public int Add(User user)
         {
             user.Id = _nextId++;
@@ -31,11 +50,6 @@ namespace Cleaning.Data.JsonStorage
                 return true;
             }
             return false;
-        }
-
-        public List<User> GetAll()
-        {
-            return _users.ToList();
         }
 
         public User? GetById(int id)

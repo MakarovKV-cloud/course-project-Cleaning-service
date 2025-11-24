@@ -13,6 +13,28 @@ namespace Cleaning.Data.JsonStorage
         private readonly List<Payment> _payments = ReadPayments();
         private static int _nextId = GetNextId();
 
+        public List<Payment> GetAll(PaymentFilter? filter = null)
+        {
+            var result = _payments.AsEnumerable();
+
+            if (filter == null)
+                return result.ToList();
+
+            if (filter.StartDate.HasValue)
+                result = result.Where(x => DateOnly.FromDateTime(x.PaymentDate) >= filter.StartDate.Value);
+
+            if (filter.EndDate.HasValue)
+                result = result.Where(x => DateOnly.FromDateTime(x.PaymentDate) <= filter.EndDate.Value);
+
+            if (!string.IsNullOrEmpty(filter.Status))
+                result = result.Where(x => x.Status == filter.Status);
+
+            if (filter.RequestId.HasValue)
+                result = result.Where(x => x.RequestId == filter.RequestId.Value);
+
+            return result.ToList();
+        }
+
         public int Add(Payment payment)
         {
             payment.Id = _nextId++;
@@ -31,11 +53,6 @@ namespace Cleaning.Data.JsonStorage
                 return true;
             }
             return false;
-        }
-
-        public List<Payment> GetAll()
-        {
-            return _payments.ToList();
         }
 
         public Payment? GetById(int id)

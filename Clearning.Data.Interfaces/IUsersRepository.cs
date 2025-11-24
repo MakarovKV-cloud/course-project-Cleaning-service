@@ -7,7 +7,7 @@ namespace Cleaning.Data.Interfaces
     {
         int Add(User user);
         bool Delete(int id);
-        List<User> GetAll();
+        List<User> GetAll(UserFilter? filter = null);
         User? GetById(int id);
         User? GetByLogin(string login);
         bool Update(User user);
