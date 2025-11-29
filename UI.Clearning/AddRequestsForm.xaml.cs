@@ -122,7 +122,7 @@ namespace UI.Cleaning
                 return;
             }
 
-            // Формируем список выбранных услуг для подтверждения
+            // Список выбранных услуг для подтверждения
             string selectedServices = string.Join("\n", _services
                 .Where(s => s.IsSelected)
                 .Select(s => $"  • {s.DisplayName}"));

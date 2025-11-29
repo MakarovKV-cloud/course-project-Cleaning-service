@@ -133,7 +133,7 @@
 
                     <!-- Вкладки статистики -->
                     <TabControl Grid.Row="1" Margin="0,0,0,10">
-                        <TabItem Header="По месяцам">
+                        <TabItem Header="Заработок">
                             <oxy:PlotView Model="{Binding MonthPlotModel}" Height="300" Margin="10"/>
                         </TabItem>
 

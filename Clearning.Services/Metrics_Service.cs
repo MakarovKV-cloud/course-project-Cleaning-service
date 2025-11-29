@@ -67,7 +67,7 @@ namespace Cleaning.Services
         }
 
         // Статистика выполненных заказов по месяцам
-        public List<CompletedOrdersStatisticItem> GetCompletedOrdersByMonth(int? year = null)
+        public List<MonthStatisticItem> GetCompletedOrdersByMonth(int? year = null)
         {
             try
             {
@@ -80,23 +80,31 @@ namespace Cleaning.Services
 
                 var items = _requestsRepository?.GetAll(filter) ?? new List<Request>();
 
-                return items
+                var monthlyData = items
                     .Where(x => x != null && x.CleaningDate != default(DateTime))
                     .GroupBy(x => new { x.CleaningDate.Year, x.CleaningDate.Month })
-                    .Select(g => new CompletedOrdersStatisticItem
+                    .Select(g => new MonthStatisticItem
                     {
                         Year = g.Key.Year,
                         Month = g.Key.Month,
-                        CompletedOrdersCount = g.Count()
+                        Count = g.Count()
                     })
                     .OrderBy(m => m.Year)
                     .ThenBy(m => m.Month)
                     .ToList();
+
+                // Если указан год, фильтруем по году
+                if (year.HasValue)
+                {
+                    monthlyData = monthlyData.Where(x => x.Year == year.Value).ToList();
+                }
+
+                return monthlyData;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error in GetCompletedOrdersByMonth: {ex.Message}");
-                return new List<CompletedOrdersStatisticItem>();
+                return new List<MonthStatisticItem>();
             }
         }
 
@@ -114,7 +122,7 @@ namespace Cleaning.Services
 
                 var items = _requestsRepository?.GetAll(filter) ?? new List<Request>();
 
-                return items
+                var monthlyData = items
                     .Where(x => x != null && x.CleaningDate != default(DateTime))
                     .GroupBy(x => new { x.CleaningDate.Year, x.CleaningDate.Month })
                     .Select(g => new EarningsStatisticItem
@@ -126,6 +134,14 @@ namespace Cleaning.Services
                     .OrderBy(m => m.Year)
                     .ThenBy(m => m.Month)
                     .ToList();
+
+                // Если указан год, фильтруем по году
+                if (year.HasValue)
+                {
+                    monthlyData = monthlyData.Where(x => x.Year == year.Value).ToList();
+                }
+
+                return monthlyData;
             }
             catch (Exception ex)
             {
@@ -138,7 +154,7 @@ namespace Cleaning.Services
     // Расширения для безопасной работы со статистикой
     public static class StatisticsExtensions
     {
-        public static string GetMonthName(this CompletedOrdersStatisticItem item)
+        public static string GetMonthName(this MonthStatisticItem item)
         {
             if (item == null) return "Неизвестно";
 

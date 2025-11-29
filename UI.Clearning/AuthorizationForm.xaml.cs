@@ -16,7 +16,7 @@ namespace UI.Cleaning
                 InitializeComponent();
                 _usersRepository = new UsersRepository();
 
-                // Очищаем предыдущую авторизацию при запуске формы
+                // Очистка предыдущей авторизации при запуске формы
                 if (Application.Current.Properties.Contains("CurrentUser"))
                 {
                     Application.Current.Properties.Remove("CurrentUser");

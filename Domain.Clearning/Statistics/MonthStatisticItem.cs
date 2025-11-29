@@ -1,10 +1,10 @@
 ﻿namespace Domain.Statistics
 {
-    public record CompletedOrdersStatisticItem
+    public record MonthStatisticItem
     {
         public required int Year { get; set; }
         public required int Month { get; set; }
-        public required int CompletedOrdersCount { get; set; }
+        public required int Count { get; set; }
 
         public string GetMonthName()
         {

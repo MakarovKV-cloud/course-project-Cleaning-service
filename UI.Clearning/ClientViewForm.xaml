@@ -23,7 +23,7 @@
                 <DataGridTextColumn Header="Площадь" Binding="{Binding Area}" Width="80"/>
                 <DataGridTextColumn Header="Дата уборки" Binding="{Binding CleaningDate, StringFormat=dd.MM.yyyy}" Width="100"/>
                 <DataGridTextColumn Header="Адрес" Binding="{Binding FullAddress}" Width="200"/>
-                <DataGridTextColumn Header="Услуги" Binding="{Binding Services}" Width="150"/>
+                <DataGridTextColumn Header="Услуги" Binding="{Binding Services}" Width="*"/>
                 <DataGridTextColumn Header="Статус" Binding="{Binding Status}" Width="100"/>
                 <DataGridTextColumn Header="Стоимость" Binding="{Binding TotalCost, StringFormat={}{0} руб.}" Width="100"/>
             </DataGrid.Columns>

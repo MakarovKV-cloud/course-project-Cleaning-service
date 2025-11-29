@@ -32,24 +32,22 @@ namespace UI.Cleaning
             {
                 InitializeComponent();
 
-                // Сначала проверяем авторизацию
+                // Проверка инициализации
                 if (!CheckAuthorization())
                 {
                     return;
                 }
 
-                // Затем инициализируем репозитории
                 if (!InitializeRepositories())
                 {
                     return;
                 }
 
-                // И только потом загружаем данные
+                // Загрузка данных
                 LoadRequests();
             }
             catch (Exception ex)
             {
-                // Вместо показа диалога, просто логируем ошибку и продолжаем работу
                 Console.WriteLine($"Критическая ошибка инициализации: {ex.Message}");
             }
         }
@@ -100,7 +98,6 @@ namespace UI.Cleaning
                 if (_requestsRepository == null || _requestServicesRepository == null ||
                     _servicesRepository == null || _citiesRepository == null)
                 {
-                    // Вместо показа ошибки, просто возвращаем false
                     Console.WriteLine("Ошибка создания репозиториев");
                     return false;
                 }
@@ -126,7 +123,6 @@ namespace UI.Cleaning
             {
                 if (_requestsRepository == null || _currentUser == null)
                 {
-                    // Вместо показа ошибки, просто выходим
                     Console.WriteLine("Системная ошибка: данные не инициализированы");
                     return;
                 }
@@ -318,7 +314,7 @@ namespace UI.Cleaning
                 }
             }
 
-            // Блокируем для завершенных или отмененных заявок
+            // Блокировка для завершенных или отмененных заявок
             if (_selectedRequest.Status == "Завершена" || _selectedRequest.Status == "Отмена")
             {
                 StatusComboBox.IsEnabled = false;
@@ -486,7 +482,7 @@ namespace UI.Cleaning
             }
         }
 
-        // Добавим кнопку обновления
+        // Кнопка обновления
         private void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
             LoadRequests();

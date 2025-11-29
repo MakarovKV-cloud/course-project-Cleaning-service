@@ -6,6 +6,7 @@ using Domain.Cleaning;
 using Domain.Statistics;
 using OxyPlot;
 using OxyPlot.Axes;
+using OxyPlot.Legends;
 using OxyPlot.Series;
 using System;
 using System.Collections.Generic;
@@ -95,6 +96,9 @@ namespace UI.Cleaning
         {
             try
             {
+                // Устанавливаем DataContext перед инициализацией компонентов
+                this.DataContext = this;
+
                 InitializeComponent();
 
                 // Инициализируем репозитории с безопасной инициализацией
@@ -824,13 +828,13 @@ namespace UI.Cleaning
 
         private void ShowEmptyStatistics()
         {
-            MonthPlotModel = CreateEmptyPlotModel("Сервис статистики не доступен");
-            CleanersPlotModel = CreateEmptyPlotModel("Сервис статистики не доступен");
+            MonthPlotModel = CreateEmptyPlotModel("Нет данных для отображения");
+            CleanersPlotModel = CreateEmptyPlotModel("Нет данных для отображения");
 
             if (TotalRequestsText != null) TotalRequestsText.Text = "Всего заявок: 0";
             if (CompletedRequestsText != null) CompletedRequestsText.Text = "Завершенных заявок: 0";
-            if (TotalEarningsText != null) TotalEarningsText.Text = "Общий заработок: 0 руб.";
-            if (AverageOrderText != null) AverageOrderText.Text = "Средний чек: 0 руб.";
+            if (TotalEarningsText != null) TotalEarningsText.Text = "Общий заработок: 0 ₽";
+            if (AverageOrderText != null) AverageOrderText.Text = "Средний чек: 0 ₽";
         }
 
         private void LoadMonthChart(int year)
@@ -844,8 +848,8 @@ namespace UI.Cleaning
                     return;
                 }
 
-                // 1. Получаем данные из сервиса
-                var ordersData = _statisticsService.GetCompletedOrdersByMonth(year) ?? new List<CompletedOrdersStatisticItem>();
+                // Получаем данные из сервиса
+                var ordersData = _statisticsService.GetCompletedOrdersByMonth(year) ?? new List<MonthStatisticItem>();
                 var earningsData = _statisticsService.GetEarningsByMonth(year) ?? new List<EarningsStatisticItem>();
 
                 // Если нет данных, показываем сообщение
@@ -855,121 +859,112 @@ namespace UI.Cleaning
                     return;
                 }
 
-                // 2. Создаём модель диаграммы
-                var plotModel = new PlotModel { Title = "Статистика по месяцам" };
+                // Создаём модель диаграммы
+                var plotModel = new PlotModel
+                {
+                    Title = $"Заработок по месяцам за {year} год",
+                    Background = OxyColors.White,
+                    PlotAreaBorderColor = OxyColors.LightGray,
+                    PlotAreaBorderThickness = new OxyThickness(1)
+                };
 
-                // 3. Создаём ось времени (категорий) снизу
+                // Создаём ось категорий (месяцы)
                 var categoryAxis = new CategoryAxis
                 {
                     Position = AxisPosition.Bottom,
-                    Angle = -15,
-                    Title = "Месяцы"
+                    Title = "Месяцы",
+                    Angle = -45,
+                    MajorStep = 1,
+                    MinorStep = 1
                 };
 
-                // 4. Заполняем метки оси
-                if (ordersData.Any())
+                // Заполняем метки оси всеми месяцами года
+                var monthNames = new[] { "Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек" };
+                foreach (var monthName in monthNames)
                 {
-                    foreach (var item in ordersData)
-                    {
-                        if (item != null)
-                        {
-                            categoryAxis.Labels.Add(item.GetMonthName());
-                        }
-                    }
-                }
-                else if (earningsData.Any())
-                {
-                    foreach (var item in earningsData)
-                    {
-                        if (item != null)
-                        {
-                            categoryAxis.Labels.Add(item.GetMonthName());
-                        }
-                    }
-                }
-                else
-                {
-                    // Создаем заглушки для месяцев
-                    for (int month = 1; month <= 12; month++)
-                    {
-                        categoryAxis.Labels.Add(new DateTime(year, month, 1).ToString("MMM yyyy"));
-                    }
+                    categoryAxis.Labels.Add(monthName);
                 }
 
                 plotModel.Axes.Add(categoryAxis);
 
-                // 5. Создаём числовую ось для количества заказов слева
-                plotModel.Axes.Add(new LinearAxis
+                // Создаём числовую ось для количества заказов
+                var ordersAxis = new LinearAxis
                 {
                     Position = AxisPosition.Left,
                     Title = "Количество заказов",
                     Minimum = 0,
                     MinimumPadding = 0.1,
                     MaximumPadding = 0.1
-                });
+                };
+                plotModel.Axes.Add(ordersAxis);
 
-                // Числовую ось для заработка справа
-                plotModel.Axes.Add(new LinearAxis
+                // Создаём числовую ось для заработка
+                var earningsAxis = new LinearAxis
                 {
                     Position = AxisPosition.Right,
                     Title = "Заработок (руб.)",
                     Minimum = 0,
                     MinimumPadding = 0.1,
                     MaximumPadding = 0.1
-                });
-
-                // 6. Серию линий для заказов
-                var ordersSeries = new LineSeries
-                {
-                    Title = "Завершенные заказы",
-                    Color = OxyColor.FromRgb(79, 129, 189),
-                    MarkerType = MarkerType.Circle,
-                    MarkerSize = 4,
-                    MarkerFill = OxyColor.FromRgb(79, 129, 189)
                 };
+                plotModel.Axes.Add(earningsAxis);
 
-                // Серия линий для заработка
+                // Создаем серию для ЗАРАБОТКА (основная метка)
                 var earningsSeries = new LineSeries
                 {
                     Title = "Заработок",
-                    Color = OxyColor.FromRgb(192, 80, 77),
-                    MarkerType = MarkerType.Square,
-                    MarkerSize = 4,
-                    MarkerFill = OxyColor.FromRgb(192, 80, 77),
-                    YAxisKey = plotModel.Axes[2].Key // Привязываем к правой оси
+                    Color = OxyColor.FromRgb(79, 129, 189),
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 6,
+                    MarkerStroke = OxyColor.FromRgb(79, 129, 189),
+                    MarkerFill = OxyColors.White,
+                    MarkerStrokeThickness = 2,
+                    StrokeThickness = 3
                 };
 
-                // Добавление точек на график
-                if (ordersData.Any())
+                // Создаем серию для ЗАВЕРШЕННЫХ ЗАКАЗОВ (вторичная метка)
+                var ordersSeries = new LineSeries
                 {
-                    for (int i = 0; i < ordersData.Count; i++)
-                    {
-                        if (ordersData[i] != null)
-                        {
-                            ordersSeries.Points.Add(new DataPoint(i, ordersData[i].CompletedOrdersCount));
-                        }
-                    }
+                    Title = "Завершенные заказы",
+                    Color = OxyColor.FromRgb(192, 80, 77),
+                    MarkerType = MarkerType.Square,
+                    MarkerSize = 6,
+                    MarkerStroke = OxyColor.FromRgb(192, 80, 77),
+                    MarkerFill = OxyColors.White,
+                    MarkerStrokeThickness = 2,
+                    StrokeThickness = 3
+                };
+
+                // Заполняем данные для ЗАРАБОТКА
+                for (int month = 1; month <= 12; month++)
+                {
+                    var monthData = earningsData.FirstOrDefault(x => x.Month == month && x.Year == year);
+                    var earnings = monthData?.TotalEarnings ?? 0;
+                    earningsSeries.Points.Add(new DataPoint(month - 1, (double)earnings));
                 }
 
-                if (earningsData.Any())
+                // Заполняем данные для ЗАВЕРШЕННЫХ ЗАКАЗОВ
+                for (int month = 1; month <= 12; month++)
                 {
-                    for (int i = 0; i < earningsData.Count; i++)
-                    {
-                        if (earningsData[i] != null)
-                        {
-                            earningsSeries.Points.Add(new DataPoint(i, (double)earningsData[i].TotalEarnings));
-                        }
-                    }
+                    var monthData = ordersData.FirstOrDefault(x => x.Month == month && x.Year == year);
+                    var orderCount = monthData?.Count ?? 0;
+                    ordersSeries.Points.Add(new DataPoint(month - 1, orderCount));
                 }
 
-                if (ordersSeries.Points.Any()) plotModel.Series.Add(ordersSeries);
-                if (earningsSeries.Points.Any()) plotModel.Series.Add(earningsSeries);
+                // Добавляем серии в модель
+                plotModel.Series.Add(earningsSeries);
+                plotModel.Series.Add(ordersSeries);
 
-                // Если нет данных для отображения
-                if (!plotModel.Series.Any())
+                //  Добавляем легенду
+                var legend = new Legend
                 {
-                    plotModel = CreateEmptyPlotModel("Нет данных для отображения");
-                }
+                    LegendPosition = LegendPosition.TopLeft,
+                    LegendOrientation = LegendOrientation.Horizontal,
+                    LegendPlacement = LegendPlacement.Outside,
+                    LegendBorder = OxyColors.LightGray,
+                    LegendBackground = OxyColor.FromArgb(200, 255, 255, 255)
+                };
+                plotModel.Legends.Add(legend);
 
                 MonthPlotModel = plotModel;
             }
@@ -977,8 +972,6 @@ namespace UI.Cleaning
             {
                 MessageBox.Show($"Ошибка загрузки диаграммы по месяцам: {ex.Message}", "Ошибка",
                     MessageBoxButton.OK, MessageBoxImage.Error);
-
-                // Создаем пустую модель в случае ошибки
                 MonthPlotModel = CreateEmptyPlotModel("Ошибка загрузки данных");
             }
         }
@@ -1005,45 +998,80 @@ namespace UI.Cleaning
                 }
 
                 // Модель диаграммы
-                var plotModel = new PlotModel { Title = "Топ клинеров по выполненным заказам" };
+                var plotModel = new PlotModel
+                {
+                    Title = $"Топ клинеров по выполненным заказам за {year} год",
+                    Background = OxyColors.White,
+                    PlotAreaBorderColor = OxyColors.LightGray,
+                    PlotAreaBorderThickness = new OxyThickness(1)
+                };
 
-                var barSeries = new BarSeries
+                var cleanersSeries = new LineSeries
                 {
                     Title = "Выполненные заказы",
-                    FillColor = OxyColor.FromRgb(155, 187, 89)
+                    Color = OxyColor.FromRgb(155, 187, 89),
+                    MarkerType = MarkerType.Diamond,
+                    MarkerSize = 6,
+                    MarkerStroke = OxyColor.FromRgb(155, 187, 89),
+                    MarkerFill = OxyColors.White,
+                    MarkerStrokeThickness = 2,
+                    StrokeThickness = 3
                 };
 
-                // Ось Категорий
+                // Ось Категорий (имена клинеров)
                 var categoryAxis = new CategoryAxis
                 {
-                    Position = AxisPosition.Left,
-                    Title = "Клинеры"
+                    Position = AxisPosition.Bottom,
+                    Title = "Клинеры",
+                    Angle = -45,
+                    MajorStep = 1,
+                    MinorStep = 1
                 };
 
-                // Числовая ось
+                // Числовая ось (количество заказов)
                 var valueAxis = new LinearAxis
                 {
-                    Position = AxisPosition.Bottom,
+                    Position = AxisPosition.Left,
                     Title = "Количество заказов",
-                    Minimum = 0
+                    Minimum = 0,
+                    MinimumPadding = 0.1,
+                    MaximumPadding = 0.1
                 };
 
-                // Добавление данных
-                foreach (var cleaner in cleanersData.Take(10)) // Топ 10 клинеров
+                // Добавление данных (топ 10 клинеров)
+                var topCleaners = cleanersData.Take(10).ToList();
+                for (int i = 0; i < topCleaners.Count; i++)
                 {
+                    var cleaner = topCleaners[i];
                     if (cleaner != null)
                     {
-                        barSeries.Items.Add(new BarItem(cleaner.Count));
-                        categoryAxis.Labels.Add(cleaner.CleanerName ?? "Неизвестный клинер");
+                        // Обрезаем длинные имена для лучшего отображения
+                        var cleanerName = cleaner.CleanerName ?? "Неизвестный";
+                        if (cleanerName.Length > 15)
+                        {
+                            cleanerName = cleanerName.Substring(0, 12) + "...";
+                        }
+
+                        cleanersSeries.Points.Add(new DataPoint(i, cleaner.Count));
+                        categoryAxis.Labels.Add(cleanerName);
                     }
                 }
 
                 // Проверяем, есть ли данные для отображения
-                if (barSeries.Items.Any())
+                if (cleanersSeries.Points.Any())
                 {
                     plotModel.Axes.Add(categoryAxis);
                     plotModel.Axes.Add(valueAxis);
-                    plotModel.Series.Add(barSeries);
+                    plotModel.Series.Add(cleanersSeries);
+
+                    // Добавляем легенду
+                    var legend = new Legend
+                    {
+                        LegendPosition = LegendPosition.TopRight,
+                        LegendOrientation = LegendOrientation.Horizontal,
+                        LegendPlacement = LegendPlacement.Outside
+                    };
+                    plotModel.Legends.Add(legend);
                 }
                 else
                 {
@@ -1056,19 +1084,35 @@ namespace UI.Cleaning
             {
                 MessageBox.Show($"Ошибка загрузки диаграммы клинеров: {ex.Message}", "Ошибка",
                     MessageBoxButton.OK, MessageBoxImage.Error);
-
-                // Создаем пустую модель в случае ошибки
                 CleanersPlotModel = CreateEmptyPlotModel("Ошибка загрузки данных");
             }
         }
 
         private PlotModel CreateEmptyPlotModel(string message)
         {
-            var plotModel = new PlotModel { Title = message };
+            var plotModel = new PlotModel
+            {
+                Title = message,
+                Background = OxyColors.White,
+                TextColor = OxyColors.Gray,
+                PlotAreaBorderColor = OxyColors.LightGray
+            };
 
-            // Добавляем пустую ось, чтобы избежать ошибок отрисовки
-            plotModel.Axes.Add(new LinearAxis { Position = AxisPosition.Bottom, Minimum = 0, Maximum = 1 });
-            plotModel.Axes.Add(new LinearAxis { Position = AxisPosition.Left, Minimum = 0, Maximum = 1 });
+            // Добавляем пустые оси для корректного отображения
+            plotModel.Axes.Add(new LinearAxis
+            {
+                Position = AxisPosition.Bottom,
+                Minimum = 0,
+                Maximum = 1,
+                IsAxisVisible = false
+            });
+            plotModel.Axes.Add(new LinearAxis
+            {
+                Position = AxisPosition.Left,
+                Minimum = 0,
+                Maximum = 1,
+                IsAxisVisible = false
+            });
 
             return plotModel;
         }
@@ -1081,8 +1125,8 @@ namespace UI.Cleaning
                 {
                     if (TotalRequestsText != null) TotalRequestsText.Text = "Всего заявок: 0";
                     if (CompletedRequestsText != null) CompletedRequestsText.Text = "Завершенных заявок: 0";
-                    if (TotalEarningsText != null) TotalEarningsText.Text = "Общий заработок: 0 руб.";
-                    if (AverageOrderText != null) AverageOrderText.Text = "Средний чек: 0 руб.";
+                    if (TotalEarningsText != null) TotalEarningsText.Text = "Общий заработок: 0 ₽";
+                    if (AverageOrderText != null) AverageOrderText.Text = "Средний чек: 0 ₽";
                     return;
                 }
 
@@ -1106,18 +1150,23 @@ namespace UI.Cleaning
                     TotalRequestsText.Text = $"Всего заявок: {allRequests.Count}";
                 if (CompletedRequestsText != null)
                     CompletedRequestsText.Text = $"Завершенных заявок: {completedRequests.Count}";
+
                 if (TotalEarningsText != null)
-                    TotalEarningsText.Text = $"Общий заработок: {completedRequests.Sum(r => r.TotalCost):C}";
+                {
+                    var totalEarnings = completedRequests.Sum(r => r.TotalCost);
+                    TotalEarningsText.Text = $"Общий заработок: {totalEarnings:N0} ₽";
+                }
 
                 if (AverageOrderText != null)
                 {
                     if (completedRequests.Any())
                     {
-                        AverageOrderText.Text = $"Средний чек: {completedRequests.Average(r => r.TotalCost):C}";
+                        var average = completedRequests.Average(r => r.TotalCost);
+                        AverageOrderText.Text = $"Средний чек: {average:N0} ₽";
                     }
                     else
                     {
-                        AverageOrderText.Text = "Средний чек: 0 руб.";
+                        AverageOrderText.Text = "Средний чек: 0 ₽";
                     }
                 }
             }
