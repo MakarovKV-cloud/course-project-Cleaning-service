@@ -97,15 +97,22 @@ namespace UI.Cleaning
             {
                 InitializeComponent();
 
-                // Инициализируем репозитории
-                _usersRepository = new UsersRepository();
-                _requestsRepository = new RequestsRepository();
-                _citiesRepository = new CitiesRepository();
-                _servicesRepository = new ServicesRepository();
-                _requestServicesRepository = new RequestServicesRepository();
-                _paymentsRepository = new PaymentsRepository();
+                // Инициализируем репозитории с безопасной инициализацией
+                _usersRepository = InitializeRepository<UsersRepository>("пользователей");
+                _requestsRepository = InitializeRepository<RequestsRepository>("заявок");
+                _citiesRepository = InitializeRepository<CitiesRepository>("городов");
+                _servicesRepository = InitializeRepository<ServicesRepository>("услуг");
+                _requestServicesRepository = InitializeRepository<RequestServicesRepository>("услуг заявок");
+                _paymentsRepository = InitializeRepository<PaymentsRepository>("платежей");
 
-                // Инициализация сервиса статистики с обработкой ошибок
+                // Проверяем, что все необходимые репозитории инициализированы
+                if (_requestsRepository == null || _usersRepository == null || _citiesRepository == null || _paymentsRepository == null)
+                {
+                    MessageBox.Show("Не удалось инициализировать необходимые репозитории. Статистика будет недоступна.",
+                        "Ошибка инициализации", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
+                // Инициализация сервиса статистики
                 InitializeStatisticsService();
 
                 if (Application.Current.Properties.Contains("CurrentUser"))
@@ -121,12 +128,22 @@ namespace UI.Cleaning
                     return;
                 }
 
-                _adminManagementService = new AdminManagementService(_currentUser, _usersRepository);
+                // Инициализация AdminManagementService только если репозиторий пользователей доступен
+                if (_usersRepository != null)
+                {
+                    _adminManagementService = new AdminManagementService(_currentUser, _usersRepository);
+                }
+                else
+                {
+                    MessageBox.Show("Репозиторий пользователей недоступен. Некоторые функции будут ограничены.",
+                        "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
 
-                LoadUsers();
-                LoadRequests();
-                LoadCities();
-                LoadCleaners();
+                // Загружаем данные только если репозитории доступны
+                if (_usersRepository != null) LoadUsers();
+                if (_requestsRepository != null) LoadRequests();
+                if (_citiesRepository != null) LoadCities();
+                if (_usersRepository != null) LoadCleaners();
 
                 // Инициализация года по умолчанию
                 if (YearComboBox != null && YearComboBox.Items.Count > 1)
@@ -141,33 +158,58 @@ namespace UI.Cleaning
             }
         }
 
+        private T InitializeRepository<T>(string repositoryName) where T : class, new()
+        {
+            try
+            {
+                var repository = new T();
+                System.Diagnostics.Debug.WriteLine($"Репозиторий {repositoryName} успешно инициализирован");
+                return repository;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка инициализации репозитория {repositoryName}: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return null;
+            }
+        }
+
         private void InitializeStatisticsService()
         {
             try
             {
+                // Проверяем, что все необходимые репозитории инициализированы
+                if (_requestsRepository == null)
+                {
+                    throw new ArgumentNullException(nameof(_requestsRepository), "Репозиторий заявок не инициализирован");
+                }
+                if (_paymentsRepository == null)
+                {
+                    throw new ArgumentNullException(nameof(_paymentsRepository), "Репозиторий платежей не инициализирован");
+                }
+                if (_usersRepository == null)
+                {
+                    throw new ArgumentNullException(nameof(_usersRepository), "Репозиторий пользователей не инициализирован");
+                }
+                if (_citiesRepository == null)
+                {
+                    throw new ArgumentNullException(nameof(_citiesRepository), "Репозиторий городов не инициализирован");
+                }
+
                 _statisticsService = new StatisticsService(
                     _requestsRepository,
                     _paymentsRepository,
                     _usersRepository,
                     _citiesRepository);
+
+                System.Diagnostics.Debug.WriteLine("Сервис статистики успешно инициализирован");
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Не удалось инициализировать сервис статистики: {ex.Message}\nСтатистика будет недоступна.",
                     "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
-                // Создаем заглушку для сервиса статистики
-                _statisticsService = CreateStatisticsServiceStub();
+                _statisticsService = null;
             }
-        }
-
-        private StatisticsService CreateStatisticsServiceStub()
-        {
-            // Создаем заглушку, которая возвращает пустые данные
-            return new StatisticsService(
-                _requestsRepository,
-                _paymentsRepository,
-                _usersRepository,
-                _citiesRepository);
         }
 
         #region Пользователи Tab
@@ -177,7 +219,14 @@ namespace UI.Cleaning
             {
                 _isUpdatingUsers = true;
 
-                var users = _usersRepository?.GetAll();
+                if (_usersRepository == null)
+                {
+                    MessageBox.Show("Репозиторий пользователей недоступен", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var users = _usersRepository.GetAll();
                 if (users == null)
                 {
                     MessageBox.Show("Не удалось загрузить список пользователей", "Ошибка",
@@ -231,8 +280,11 @@ namespace UI.Cleaning
                     else
                     {
                         ClearUserSelection();
-                        MessageBox.Show("Пользователь не найден в базе данных", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        if (_selectedUser == null)
+                        {
+                            MessageBox.Show("Пользователь не найден в базе данных", "Ошибка",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                        }
                     }
                 }
                 else
@@ -279,7 +331,17 @@ namespace UI.Cleaning
             try
             {
                 string newRole = RoleComboBox.SelectedItem.ToString() ?? string.Empty;
-                _adminManagementService?.ApplyRole(_selectedUser, newRole);
+
+                if (_adminManagementService != null)
+                {
+                    _adminManagementService.ApplyRole(_selectedUser, newRole);
+                }
+                else
+                {
+                    MessageBox.Show("Сервис управления недоступен", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
 
                 LoadUsers();
                 RestoreUserSelection(_selectedUser.Id);
@@ -352,12 +414,19 @@ namespace UI.Cleaning
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    _usersRepository?.Delete(_selectedUser.Id);
-                    LoadUsers();
-                    ClearUserSelection();
-
-                    MessageBox.Show("Пользователь удален", "Успех",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (_usersRepository != null)
+                    {
+                        _usersRepository.Delete(_selectedUser.Id);
+                        LoadUsers();
+                        ClearUserSelection();
+                        MessageBox.Show("Пользователь удален", "Успех",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Репозиторий пользователей недоступен", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
             }
             catch (Exception ex)
@@ -373,7 +442,14 @@ namespace UI.Cleaning
         {
             try
             {
-                var requests = _requestsRepository?.GetAll() ?? new List<Request>();
+                if (_requestsRepository == null)
+                {
+                    MessageBox.Show("Репозиторий заявок недоступен", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var requests = _requestsRepository.GetAll() ?? new List<Request>();
                 var displayData = requests.Select(r => new RequestDisplayData
                 {
                     Id = r.Id,
@@ -401,7 +477,14 @@ namespace UI.Cleaning
         {
             try
             {
-                var cleaners = _usersRepository?.GetAll()?.Where(u => u.Role == "Cleaner").ToList() ?? new List<User>();
+                if (_usersRepository == null)
+                {
+                    MessageBox.Show("Репозиторий пользователей недоступен", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var cleaners = _usersRepository.GetAll()?.Where(u => u.Role == "Cleaner").ToList() ?? new List<User>();
                 var displayData = cleaners.Select(c => new CleanerDisplayData
                 {
                     Id = c.Id,
@@ -424,7 +507,9 @@ namespace UI.Cleaning
         {
             try
             {
-                var user = _usersRepository?.GetById(userId);
+                if (_usersRepository == null) return "Неизвестно";
+
+                var user = _usersRepository.GetById(userId);
                 return user != null ? $"{user.LastName} {user.FirstName}".Trim() : "Неизвестно";
             }
             catch
@@ -437,7 +522,9 @@ namespace UI.Cleaning
         {
             try
             {
-                var city = _citiesRepository?.GetById(request.CityId);
+                if (_citiesRepository == null) return $"{request.District}, {request.Address}";
+
+                var city = _citiesRepository.GetById(request.CityId);
                 return city != null ? $"{city.Name}, {request.District}, {request.Address}"
                                    : $"{request.District}, {request.Address}";
             }
@@ -516,11 +603,18 @@ namespace UI.Cleaning
                     _selectedRequest.CleanerId = null;
                 }
 
-                _requestsRepository?.Update(_selectedRequest);
-                LoadRequests();
-
-                MessageBox.Show("Заявка обновлена", "Успех",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                if (_requestsRepository != null)
+                {
+                    _requestsRepository.Update(_selectedRequest);
+                    LoadRequests();
+                    MessageBox.Show("Заявка обновлена", "Успех",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("Репозиторий заявок недоступен", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             catch (Exception ex)
             {
@@ -535,7 +629,14 @@ namespace UI.Cleaning
         {
             try
             {
-                var cities = _citiesRepository?.GetAll() ?? new List<City>();
+                if (_citiesRepository == null)
+                {
+                    MessageBox.Show("Репозиторий городов недоступен", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var cities = _citiesRepository.GetAll() ?? new List<City>();
                 if (CitiesDataGrid != null)
                 {
                     CitiesDataGrid.ItemsSource = cities;
@@ -581,7 +682,14 @@ namespace UI.Cleaning
 
             try
             {
-                var existingCity = _citiesRepository?.GetAll()
+                if (_citiesRepository == null)
+                {
+                    MessageBox.Show("Репозиторий городов недоступен", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var existingCity = _citiesRepository.GetAll()
                     ?.FirstOrDefault(c => c.Name.ToLower() == cityName.ToLower());
 
                 if (existingCity != null)
@@ -592,7 +700,7 @@ namespace UI.Cleaning
                 }
 
                 var newCity = new City { Name = cityName };
-                _citiesRepository?.Add(newCity);
+                _citiesRepository.Add(newCity);
 
                 if (NewCityTextBox != null)
                 {
@@ -621,6 +729,13 @@ namespace UI.Cleaning
 
             try
             {
+                if (_citiesRepository == null)
+                {
+                    MessageBox.Show("Репозиторий городов недоступен", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
                 var requestsUsingCity = _requestsRepository?.GetAll()
                     ?.Where(r => r.CityId == _selectedCity.Id).ToList() ?? new List<Request>();
 
@@ -640,7 +755,7 @@ namespace UI.Cleaning
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    _citiesRepository?.Delete(_selectedCity.Id);
+                    _citiesRepository.Delete(_selectedCity.Id);
                     LoadCities();
                     MessageBox.Show("Город удален", "Успех",
                         MessageBoxButton.OK, MessageBoxImage.Information);
@@ -677,27 +792,26 @@ namespace UI.Cleaning
                 // Проверяем, что сервис статистики инициализирован
                 if (_statisticsService == null)
                 {
-                    MessageBox.Show("Сервис статистики не инициализирован", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                    InitializeStatisticsService(); // Пытаемся переинициализировать
-
-                    if (_statisticsService == null)
-                    {
-                        ShowEmptyStatistics();
-                        return;
-                    }
+                    ShowEmptyStatistics();
+                    return;
                 }
 
                 if (YearComboBox?.SelectedItem is ComboBoxItem selectedYearItem)
                 {
-                    int year = int.Parse(selectedYearItem.Content?.ToString() ?? "2025");
+                    string yearText = selectedYearItem.Content?.ToString() ?? "2025";
+                    if (int.TryParse(yearText, out int year))
+                    {
+                        // Загрузка диаграмм
+                        LoadMonthChart(year);
+                        LoadCleanersChart(year);
 
-                    // Загрузка диаграмм
-                    LoadMonthChart(year);
-                    LoadCleanersChart(year);
-
-                    // Загрузка общей статистики
-                    LoadOverallStatistics(year);
+                        // Загрузка общей статистики
+                        LoadOverallStatistics(year);
+                    }
+                    else
+                    {
+                        ShowEmptyStatistics();
+                    }
                 }
             }
             catch (Exception ex)
@@ -731,12 +845,8 @@ namespace UI.Cleaning
                 }
 
                 // 1. Получаем данные из сервиса
-                var ordersData = _statisticsService.GetCompletedOrdersByMonth(year);
-                var earningsData = _statisticsService.GetEarningsByMonth(year);
-
-                // 2. Проверяем на null и создаем пустые коллекции если нужно
-                ordersData ??= new List<CompletedOrdersStatisticItem>();
-                earningsData ??= new List<EarningsStatisticItem>();
+                var ordersData = _statisticsService.GetCompletedOrdersByMonth(year) ?? new List<CompletedOrdersStatisticItem>();
+                var earningsData = _statisticsService.GetEarningsByMonth(year) ?? new List<EarningsStatisticItem>();
 
                 // Если нет данных, показываем сообщение
                 if (!ordersData.Any() && !earningsData.Any())
@@ -745,10 +855,10 @@ namespace UI.Cleaning
                     return;
                 }
 
-                // 3. Создаём модель диаграммы
+                // 2. Создаём модель диаграммы
                 var plotModel = new PlotModel { Title = "Статистика по месяцам" };
 
-                // 4. Создаём ось времени (категорий) снизу
+                // 3. Создаём ось времени (категорий) снизу
                 var categoryAxis = new CategoryAxis
                 {
                     Position = AxisPosition.Bottom,
@@ -756,14 +866,39 @@ namespace UI.Cleaning
                     Title = "Месяцы"
                 };
 
-                // 5. Заполняем метки оси
-                foreach (var item in ordersData)
+                // 4. Заполняем метки оси
+                if (ordersData.Any())
                 {
-                    categoryAxis.Labels.Add(item.GetMonthName());
+                    foreach (var item in ordersData)
+                    {
+                        if (item != null)
+                        {
+                            categoryAxis.Labels.Add(item.GetMonthName());
+                        }
+                    }
                 }
+                else if (earningsData.Any())
+                {
+                    foreach (var item in earningsData)
+                    {
+                        if (item != null)
+                        {
+                            categoryAxis.Labels.Add(item.GetMonthName());
+                        }
+                    }
+                }
+                else
+                {
+                    // Создаем заглушки для месяцев
+                    for (int month = 1; month <= 12; month++)
+                    {
+                        categoryAxis.Labels.Add(new DateTime(year, month, 1).ToString("MMM yyyy"));
+                    }
+                }
+
                 plotModel.Axes.Add(categoryAxis);
 
-                // 6. Создаём числовую ось для количества заказов слева
+                // 5. Создаём числовую ось для количества заказов слева
                 plotModel.Axes.Add(new LinearAxis
                 {
                     Position = AxisPosition.Left,
@@ -783,7 +918,7 @@ namespace UI.Cleaning
                     MaximumPadding = 0.1
                 });
 
-                // 7. Серию линий для заказов
+                // 6. Серию линий для заказов
                 var ordersSeries = new LineSeries
                 {
                     Title = "Завершенные заказы",
@@ -805,17 +940,36 @@ namespace UI.Cleaning
                 };
 
                 // Добавление точек на график
-                for (int i = 0; i < ordersData.Count; i++)
+                if (ordersData.Any())
                 {
-                    ordersSeries.Points.Add(new DataPoint(i, ordersData[i].CompletedOrdersCount));
-                    if (i < earningsData.Count)
+                    for (int i = 0; i < ordersData.Count; i++)
                     {
-                        earningsSeries.Points.Add(new DataPoint(i, (double)earningsData[i].TotalEarnings));
+                        if (ordersData[i] != null)
+                        {
+                            ordersSeries.Points.Add(new DataPoint(i, ordersData[i].CompletedOrdersCount));
+                        }
                     }
                 }
 
-                plotModel.Series.Add(ordersSeries);
-                plotModel.Series.Add(earningsSeries);
+                if (earningsData.Any())
+                {
+                    for (int i = 0; i < earningsData.Count; i++)
+                    {
+                        if (earningsData[i] != null)
+                        {
+                            earningsSeries.Points.Add(new DataPoint(i, (double)earningsData[i].TotalEarnings));
+                        }
+                    }
+                }
+
+                if (ordersSeries.Points.Any()) plotModel.Series.Add(ordersSeries);
+                if (earningsSeries.Points.Any()) plotModel.Series.Add(earningsSeries);
+
+                // Если нет данных для отображения
+                if (!plotModel.Series.Any())
+                {
+                    plotModel = CreateEmptyPlotModel("Нет данных для отображения");
+                }
 
                 MonthPlotModel = plotModel;
             }
@@ -841,10 +995,7 @@ namespace UI.Cleaning
                 }
 
                 // Данные из сервиса
-                var cleanersData = _statisticsService.GetCleanersCompletedOrdersStatistics(year);
-
-                // Проверка на null
-                cleanersData ??= new List<CleanerStatisticItem>();
+                var cleanersData = _statisticsService.GetCleanersCompletedOrdersStatistics(year) ?? new List<CleanerStatisticItem>();
 
                 // Если нет данных
                 if (!cleanersData.Any())
@@ -880,13 +1031,24 @@ namespace UI.Cleaning
                 // Добавление данных
                 foreach (var cleaner in cleanersData.Take(10)) // Топ 10 клинеров
                 {
-                    barSeries.Items.Add(new BarItem(cleaner.Count));
-                    categoryAxis.Labels.Add(cleaner.CleanerName);
+                    if (cleaner != null)
+                    {
+                        barSeries.Items.Add(new BarItem(cleaner.Count));
+                        categoryAxis.Labels.Add(cleaner.CleanerName ?? "Неизвестный клинер");
+                    }
                 }
 
-                plotModel.Axes.Add(categoryAxis);
-                plotModel.Axes.Add(valueAxis);
-                plotModel.Series.Add(barSeries);
+                // Проверяем, есть ли данные для отображения
+                if (barSeries.Items.Any())
+                {
+                    plotModel.Axes.Add(categoryAxis);
+                    plotModel.Axes.Add(valueAxis);
+                    plotModel.Series.Add(barSeries);
+                }
+                else
+                {
+                    plotModel = CreateEmptyPlotModel("Нет данных о клинерах");
+                }
 
                 CleanersPlotModel = plotModel;
             }
@@ -903,6 +1065,11 @@ namespace UI.Cleaning
         private PlotModel CreateEmptyPlotModel(string message)
         {
             var plotModel = new PlotModel { Title = message };
+
+            // Добавляем пустую ось, чтобы избежать ошибок отрисовки
+            plotModel.Axes.Add(new LinearAxis { Position = AxisPosition.Bottom, Minimum = 0, Maximum = 1 });
+            plotModel.Axes.Add(new LinearAxis { Position = AxisPosition.Left, Minimum = 0, Maximum = 1 });
+
             return plotModel;
         }
 
@@ -910,6 +1077,15 @@ namespace UI.Cleaning
         {
             try
             {
+                if (_requestsRepository == null)
+                {
+                    if (TotalRequestsText != null) TotalRequestsText.Text = "Всего заявок: 0";
+                    if (CompletedRequestsText != null) CompletedRequestsText.Text = "Завершенных заявок: 0";
+                    if (TotalEarningsText != null) TotalEarningsText.Text = "Общий заработок: 0 руб.";
+                    if (AverageOrderText != null) AverageOrderText.Text = "Средний чек: 0 руб.";
+                    return;
+                }
+
                 var completedFilter = new RequestFilter
                 {
                     StartDate = new DateOnly(year, 1, 1),
@@ -923,8 +1099,8 @@ namespace UI.Cleaning
                     EndDate = new DateOnly(year, 12, 31)
                 };
 
-                var completedRequests = _requestsRepository?.GetAll(completedFilter) ?? new List<Request>();
-                var allRequests = _requestsRepository?.GetAll(allFilter) ?? new List<Request>();
+                var completedRequests = _requestsRepository.GetAll(completedFilter) ?? new List<Request>();
+                var allRequests = _requestsRepository.GetAll(allFilter) ?? new List<Request>();
 
                 if (TotalRequestsText != null)
                     TotalRequestsText.Text = $"Всего заявок: {allRequests.Count}";
