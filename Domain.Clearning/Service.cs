@@ -6,5 +6,6 @@
         public string Name { get; set; } = string.Empty;
         public decimal PricePerSquareMeter { get; set; }
         public bool RequiresArea { get; set; }
+        public List<RequestService>? RequestServices { get; set; } // Навигационное свойство для связи многие-ко-многим
     }
 }

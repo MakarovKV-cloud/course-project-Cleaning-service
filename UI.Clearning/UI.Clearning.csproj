@@ -2,17 +2,23 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net9.0-windows7.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.11">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.11" />
     <PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CleaningDB.Data.MySql\CleaningDB.Data.SqlServer.csproj" />
     <ProjectReference Include="..\Clearning.Data.Interfaces\Clearning.Data.Interfaces.csproj" />
     <ProjectReference Include="..\Clearning.Data.JsonStorage\Clearning.Data.JsonStorage.csproj" />
     <ProjectReference Include="..\Clearning.Services\Clearning.Services.csproj" />
